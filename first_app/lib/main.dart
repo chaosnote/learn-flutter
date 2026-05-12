@@ -27,7 +27,12 @@ class MyApp extends StatelessWidget {
 }
 
 class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
+  var current = WordPair.random(); // 產生隨機字串
+
+  void getNext() {
+    current = WordPair.random();
+    notifyListeners();
+  }
 }
 
 class MyHomePage extends StatelessWidget {
@@ -44,6 +49,8 @@ class MyHomePage extends StatelessWidget {
             onPressed: () {
               console.log('button pressed!'); // 輸出至 VSCode Debug Console
               print('button pressed!'); // 以 Chrome 為例，則輸出是 F12 Console
+
+              appState.getNext();
             },
             child: Text('Next'),
           ),
