@@ -42,8 +42,8 @@ class MyHomePage extends StatelessWidget {
           Text(appState.current.asLowerCase),
           ElevatedButton(
             onPressed: () {
-              console.log('button pressed!');
-              // print('button pressed!');
+              console.log('button pressed!'); // 輸出至 VSCode Debug Console
+              print('button pressed!'); // 以 Chrome 為例，則輸出是 F12 Console
             },
             child: Text('Next'),
           ),
