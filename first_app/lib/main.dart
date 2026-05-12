@@ -28,9 +28,19 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random(); // 產生隨機字串
-
   void getNext() {
     current = WordPair.random();
+    notifyListeners(); // 對應 context.watch、觸發 build
+  }
+
+  var favorites = <WordPair>[];
+  void toggleFavorite() {
+    if (favorites.contains(current)) {
+      favorites.remove(current);
+    } else {
+      favorites.add(current);
+    }
+    print(favorites);
     notifyListeners();
   }
 }
@@ -41,22 +51,44 @@ class MyHomePage extends StatelessWidget {
     var appState = context.watch<MyAppState>();
     var pair = appState.current;
 
-    return Scaffold(
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('A random AWESOME idea:'),
-          BigCard(pair: pair),
-          ElevatedButton(
-            onPressed: () {
-              console.log('button pressed!'); // 輸出至 VSCode Debug Console
-              print('button pressed!'); // 以 Chrome 為例，則輸出是 F12 Console
+    IconData icon;
+    if (appState.favorites.contains(pair)) {
+      icon = Icons.favorite;
+    } else {
+      icon = Icons.favorite_border;
+    }
 
-              appState.getNext();
-            },
-            child: Text('Next'),
-          ),
-        ],
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('A random AWESOME idea:'),
+            BigCard(pair: pair),
+            SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min, // 告知 Row 不要佔用所有可用的水平空間
+              children: [
+                ElevatedButton.icon(
+                  icon: Icon(icon),
+                  onPressed: () {
+                    console.log('button pressed!'); // 輸出至 VSCode Debug Console
+                    print('button pressed!'); // 以 Chrome 為例，則輸出是 F12 Console
+                    appState.toggleFavorite();
+                  },
+                  label: Text('Like'),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    appState.getNext();
+                  },
+                  child: Text('Next'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
