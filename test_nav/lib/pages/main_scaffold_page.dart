@@ -15,8 +15,8 @@ class _MainScaffoldPageState extends State<MainScaffoldPage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    LineContactsPage(),
     PhoneContactsPage(),
+    LineContactsPage(),
     SoundControlPage(),
     LaunchAppPage(), // 加入新建立的啟動軟體頁面
   ];
