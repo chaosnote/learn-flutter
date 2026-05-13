@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'pages/main_scaffold_page.dart';
 
 void main() {
@@ -10,6 +12,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(kIsWeb ? "網頁版" : "非網頁版");
+
     return MaterialApp(
       title: 'Flutter Nav Test',
       theme: ThemeData(

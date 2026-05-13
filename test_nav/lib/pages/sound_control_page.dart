@@ -1,5 +1,3 @@
-import 'dart:developer' as console;
-
 import 'package:flutter/material.dart';
 
 class SoundControlPage extends StatefulWidget {
@@ -18,9 +16,9 @@ class _SoundControlPageState extends State<SoundControlPage> {
     });
 
     if (turnOn) {
-      console.log('開');
+      debugPrint('開');
     } else {
-      console.log('關');
+      debugPrint('關');
     }
   }
 
