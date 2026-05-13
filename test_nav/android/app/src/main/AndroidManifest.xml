@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+
     <application
         android:label="test_nav"
         android:name="${applicationName}"
@@ -40,6 +43,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- 為了能在 Android 11+ 檢查並開啟撥號畫面 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
         </intent>
         <!-- 為了能在 Android 11+ 偵測是否已安裝，必須加入 package 宣告 -->
         <package android:name="jp.naver.line.android" />

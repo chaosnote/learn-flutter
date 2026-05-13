@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Flutter Nav Test',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurpleAccent), useMaterial3: true),
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange), useMaterial3: true),
       home: const MainScaffoldPage(),
     );
   }
