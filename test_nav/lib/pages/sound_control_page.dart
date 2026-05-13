@@ -8,8 +8,7 @@ class SoundControlPage extends StatefulWidget {
   State<SoundControlPage> createState() => _SoundControlPageState();
 }
 
-class _SoundControlPageState extends State<SoundControlPage>
-    with WidgetsBindingObserver {
+class _SoundControlPageState extends State<SoundControlPage> with WidgetsBindingObserver {
   bool _isSoundOn = true;
 
   // 建立與 Android 原生溝通的通道 (Channel 名稱可自訂，但兩邊必須一致)
@@ -74,10 +73,7 @@ class _SoundControlPageState extends State<SoundControlPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              "目前狀態",
-              style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
-            ),
+            Text("目前狀態", style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold)),
             Text(
               _isSoundOn ? '聲音已開啟' : '聲音已關閉',
               style: TextStyle(

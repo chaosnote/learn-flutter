@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import 'package:android_intent_plus/android_intent.dart';
 
@@ -26,11 +25,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
   Future<void> _checkAllAppsStatus() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
 
-    final packages = [
-      'jp.naver.line.android',
-      'com.facebook.katana',
-      'com.google.android.youtube',
-    ];
+    final packages = ['jp.naver.line.android', 'com.facebook.katana', 'com.google.android.youtube'];
 
     for (final pkg in packages) {
       final AndroidIntent intent = AndroidIntent(
@@ -49,9 +44,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
   Future<void> _launchOrInstallApp(String packageName) async {
     // 平台防呆機制
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
       return;
     }
 
@@ -70,10 +63,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
       await launchIntent.launch();
     } else {
       // 未安裝：導引至 Google Play 商店
-      final AndroidIntent storeIntent = AndroidIntent(
-        action: 'action_view',
-        data: 'market://details?id=$packageName',
-      );
+      final AndroidIntent storeIntent = AndroidIntent(action: 'action_view', data: 'market://details?id=$packageName');
       await storeIntent.launch();
     }
   }
@@ -103,10 +93,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
       child: ListTile(
         leading: Icon(icon, size: 40, color: iconColor),
         title: Text(title, style: const TextStyle(fontSize: 20)),
-        subtitle: Text(
-          subtitleText,
-          style: TextStyle(color: Colors.grey.shade600),
-        ),
+        subtitle: Text(subtitleText, style: TextStyle(color: Colors.grey.shade600)),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: () => _launchOrInstallApp(packageName),
       ),
@@ -119,12 +106,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
       appBar: AppBar(title: const Text('啟動軟體')),
       body: ListView(
         children: [
-          _buildAppTile(
-            title: 'Line',
-            packageName: 'jp.naver.line.android',
-            icon: Icons.chat,
-            iconColor: Colors.green,
-          ),
+          _buildAppTile(title: 'Line', packageName: 'jp.naver.line.android', icon: Icons.chat, iconColor: Colors.green),
           _buildAppTile(
             title: 'Facebook',
             packageName: 'com.facebook.katana',
