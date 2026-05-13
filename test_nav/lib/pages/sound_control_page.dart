@@ -75,24 +75,33 @@ class _SoundControlPageState extends State<SoundControlPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              _isSoundOn ? '目前狀態：聲音已開啟' : '目前狀態：聲音已關閉',
+              "目前狀態",
+              style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              _isSoundOn ? '聲音已開啟' : '聲音已關閉',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 42,
                 fontWeight: FontWeight.bold,
                 color: _isSoundOn ? Colors.green : Colors.red,
               ),
             ),
-            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Transform.scale(
-                  scale: 1.8,
-                  child: Switch(
-                    value: _isSoundOn,
-                    onChanged: (value) {
-                      _toggleMute(value);
-                    },
+                // 使用 SizedBox 手動幫放大後的 Switch 撐出排版空間
+                // 原本的 Switch 大小約為 60x40，放大 3 倍後大約需要 180x120 的佔位空間
+                SizedBox(
+                  width: 180,
+                  height: 120,
+                  child: Transform.scale(
+                    scale: 3,
+                    child: Switch(
+                      value: _isSoundOn,
+                      onChanged: (value) {
+                        _toggleMute(value);
+                      },
+                    ),
                   ),
                 ),
               ],
