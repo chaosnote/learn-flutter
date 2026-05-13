@@ -41,5 +41,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 為了能在 Android 11+ 偵測是否已安裝，必須加入 package 宣告 -->
+        <package android:name="jp.naver.line.android" />
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.google.android.youtube" />
     </queries>
 </manifest>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'line_contacts_page.dart';
 import 'phone_contacts_page.dart';
 import 'sound_control_page.dart';
+import 'launch_app_page.dart';
 
 class MainScaffoldPage extends StatefulWidget {
   const MainScaffoldPage({super.key});
@@ -17,6 +18,7 @@ class _MainScaffoldPageState extends State<MainScaffoldPage> {
     LineContactsPage(),
     PhoneContactsPage(),
     SoundControlPage(),
+    LaunchAppPage(), // 加入新建立的啟動軟體頁面
   ];
 
   @override
@@ -35,18 +37,10 @@ class _MainScaffoldPageState extends State<MainScaffoldPage> {
           });
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Line',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.phone),
-            label: 'Phone',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.volume_up),
-            label: '聲音',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.phone), label: 'Phone'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Line'),
+          BottomNavigationBarItem(icon: Icon(Icons.volume_up), label: '聲音'),
+          BottomNavigationBarItem(icon: Icon(Icons.apps), label: '軟體'),
         ],
       ),
     );
