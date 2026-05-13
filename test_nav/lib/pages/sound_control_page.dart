@@ -8,7 +8,8 @@ class SoundControlPage extends StatefulWidget {
   State<SoundControlPage> createState() => _SoundControlPageState();
 }
 
-class _SoundControlPageState extends State<SoundControlPage> {
+class _SoundControlPageState extends State<SoundControlPage>
+    with WidgetsBindingObserver {
   bool _isSoundOn = true;
 
   // 建立與 Android 原生溝通的通道 (Channel 名稱可自訂，但兩邊必須一致)
@@ -17,7 +18,24 @@ class _SoundControlPageState extends State<SoundControlPage> {
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this); // 註冊生命週期觀察者
     _fetchCurrentVolume(); // 畫面載入時先取得一次目前音量
+  }
+
+  @override
+  void dispose() {
+    // 移除生命週期觀察者，避免記憶體流失
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 當 App 從背景回到前景（例如關螢幕後再打開、從其他 App 切換回來），重新取得音量
+    if (state == AppLifecycleState.resumed) {
+      _fetchCurrentVolume();
+    }
   }
 
   Future<void> _fetchCurrentVolume() async {
@@ -36,12 +54,6 @@ class _SoundControlPageState extends State<SoundControlPage> {
     setState(() {
       _isSoundOn = turnOn;
     });
-
-    if (turnOn) {
-      debugPrint('開');
-    } else {
-      debugPrint('關');
-    }
 
     try {
       // 呼叫 Android 原生方法，並傳遞目前的開關狀態
