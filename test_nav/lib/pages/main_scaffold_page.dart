@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'line_contacts_page.dart';
 import 'phone_contacts_page.dart';
-import 'sound_control_page.dart';
 import 'launch_app_page.dart';
+import 'device_status_page.dart';
 
 class MainScaffoldPage extends StatefulWidget {
   const MainScaffoldPage({super.key});
@@ -17,7 +17,7 @@ class _MainScaffoldPageState extends State<MainScaffoldPage> {
   final List<Widget> _pages = const [
     PhoneContactsPage(),
     LineContactsPage(),
-    SoundControlPage(),
+    DeviceStatusPage(),
     LaunchAppPage(), // 加入新建立的啟動軟體頁面
   ];
 
