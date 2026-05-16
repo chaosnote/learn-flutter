@@ -181,30 +181,15 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   Widget _buildVolumeCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
-        child: Column(
-          children: [
-            const Icon(Icons.volume_up, size: 48, color: Colors.blueGrey),
-            const SizedBox(height: 8),
-            const Text("聲音狀態", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Text(
-              _isSoundOn ? '聲音已開啟' : '聲音已關閉',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: _isSoundOn ? Colors.green : Colors.red,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Transform.scale(
-              scale: 2,
-              child: Switch(value: _isSoundOn, onChanged: _toggleMute),
-            ),
-          ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(
+          _isSoundOn ? Icons.volume_up : Icons.volume_off,
+          size: 36,
+          color: _isSoundOn ? Colors.green : Colors.grey,
         ),
+        title: const Text("聲音", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        trailing: Switch(value: _isSoundOn, onChanged: _toggleMute),
       ),
     );
   }
@@ -212,47 +197,31 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   Widget _buildBatteryCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
-        child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
           children: [
             Icon(
               _batteryLevel > 20 ? Icons.battery_full : Icons.battery_alert,
-              size: 48,
+              size: 36,
               color: _batteryLevel > 20 ? Colors.green : Colors.red,
             ),
-            const SizedBox(height: 8),
-            const Text("電量監控", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Text(
-              '目前電量：$_batteryLevel%',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue),
+            const SizedBox(width: 16),
+            Text('$_batteryLevel%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            const Text('低於 ', style: TextStyle(fontSize: 16)),
+            SizedBox(
+              width: 50,
+              child: TextField(
+                controller: _batteryLimitController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
+                onChanged: (_) => _checkBatteryAlert(),
+              ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('低於 ', style: TextStyle(fontSize: 18)),
-                SizedBox(
-                  width: 80,
-                  child: TextField(
-                    controller: _batteryLimitController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      isDense: true,
-                    ),
-                    onChanged: (_) => _checkBatteryAlert(),
-                  ),
-                ),
-                const Text(' % 時提醒', style: TextStyle(fontSize: 18)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text('系統將定期在背景檢查電量', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const Text(' % 提醒', style: TextStyle(fontSize: 16)),
           ],
         ),
       ),
@@ -262,28 +231,16 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   Widget _buildWifiCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
-        child: Column(
-          children: [
-            Icon(
-              _isWifiConnected ? Icons.wifi : Icons.wifi_off,
-              size: 48,
-              color: _isWifiConnected ? Colors.green : Colors.grey,
-            ),
-            const SizedBox(height: 8),
-            const Text("WiFi 狀態", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Text(
-              _isWifiConnected ? '已連線至 WiFi' : '未連線 WiFi',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: _isWifiConnected ? Colors.green : Colors.grey,
-              ),
-            ),
-          ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(
+          _isWifiConnected ? Icons.wifi : Icons.wifi_off,
+          size: 36,
+          color: _isWifiConnected ? Colors.green : Colors.grey,
+        ),
+        title: Text(
+          _isWifiConnected ? 'WiFi 已連線' : 'WiFi 未連線',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
     );
