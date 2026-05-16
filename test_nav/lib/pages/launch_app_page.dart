@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 
 import 'package:android_intent_plus/android_intent.dart';
 
+import '../models/app_packages.dart';
+
 class LaunchAppPage extends StatefulWidget {
   const LaunchAppPage({super.key});
 
@@ -25,7 +27,7 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
   Future<void> _checkAllAppsStatus() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
 
-    final packages = ['jp.naver.line.android', 'com.facebook.katana', 'com.google.android.youtube'];
+    final packages = [AppPackages.line, AppPackages.facebook, AppPackages.youtube];
 
     for (final pkg in packages) {
       final AndroidIntent intent = AndroidIntent(
@@ -106,16 +108,16 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
       appBar: AppBar(title: const Text('啟動軟體')),
       body: ListView(
         children: [
-          _buildAppTile(title: 'Line', packageName: 'jp.naver.line.android', icon: Icons.chat, iconColor: Colors.green),
+          _buildAppTile(title: 'Line', packageName: AppPackages.line, icon: Icons.chat, iconColor: Colors.green),
           _buildAppTile(
             title: 'Facebook',
-            packageName: 'com.facebook.katana',
+            packageName: AppPackages.facebook,
             icon: Icons.facebook,
             iconColor: Colors.blue,
           ),
           _buildAppTile(
             title: 'YouTube',
-            packageName: 'com.google.android.youtube',
+            packageName: AppPackages.youtube,
             icon: Icons.video_library,
             iconColor: Colors.red,
           ),
