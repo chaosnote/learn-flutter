@@ -3,6 +3,7 @@ import 'line_contacts_page.dart';
 import 'phone_contacts_page.dart';
 import 'launch_app_page.dart';
 import 'device_status_page.dart';
+import '../services/battery_monitor_service.dart';
 
 class MainScaffoldPage extends StatefulWidget {
   const MainScaffoldPage({super.key});
@@ -22,9 +23,18 @@ class _MainScaffoldPageState extends State<MainScaffoldPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // 在首頁畫面初始化完成後，才啟動背景通知服務，確保 Activity 存在且安全
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      BatteryMonitorService().init();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: _pages[_currentIndex], // 恢復為只載入單一頁面，節省記憶體
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         iconSize: 40.0,

@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import '../models/params.dart';
+import '../services/battery_monitor_service.dart';
 
 class DeviceStatusPage extends StatefulWidget {
   const DeviceStatusPage({super.key});
@@ -17,9 +17,6 @@ class DeviceStatusPage extends StatefulWidget {
 }
 
 class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBindingObserver {
-  // === 通知設定 ===
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
   // === 聲音控制 ===
   bool _isSoundOn = true;
   static const platform = MethodChannel('com.example.test_nav/volume');
@@ -29,7 +26,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   int _batteryLevel = 100;
   late final TextEditingController _batteryLimitController;
   Timer? _batteryCheckTimer;
-  bool _hasAlerted = false; // 防止一直重複跳出警告
 
   // === WiFi 狀態 ===
   List<ConnectivityResult> _connectionStatus = [ConnectivityResult.none];
@@ -43,7 +39,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
 
     _batteryLimitController = TextEditingController(text: AppParams.batteryAlertLimit.toString());
 
-    _initNotifications();
     _fetchCurrentVolume();
     _initBattery();
     _initConnectivity();
@@ -65,45 +60,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
       _checkBatteryLevel();
       _initConnectivity(); // 背景回來時也重新拿一次網路狀態
     }
-  }
-
-  // --- 系統通知邏輯 ---
-  Future<void> _initNotifications() async {
-    if (kIsWeb) return; // 網頁版不支援本機通知
-
-    // 初始化設定，使用 Android 專案預設的 APP 啟動圖示做為通知圖示
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
-    );
-
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
-
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-    // 針對 Android 13 (API 33) 以上請求通知權限
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      await _flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
-    }
-  }
-
-  Future<void> _showBatteryNotification(int level, int limit) async {
-    if (kIsWeb) return;
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'battery_alert_channel', // 頻道 ID
-      '電量警告', // 頻道名稱
-      channelDescription: '當電量低於設定值時發出系統通知',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
-
-    // 發送通知
-    await _flutterLocalNotificationsPlugin.show(0, '⚠️ 電量警告', '目前電量 ($level%) 低於設定值 ($limit%)', platformDetails);
   }
 
   // --- 聲音控制邏輯 ---
@@ -135,7 +91,7 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   // --- 電池邏輯 ---
   void _initBattery() {
     _checkBatteryLevel();
-    // 設定每 30 秒定期檢查電量
+    // 此處的 Timer 僅負責「更新當前頁面的 UI 顯示」，與系統通知無關
     _batteryCheckTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
       _checkBatteryLevel();
     });
@@ -162,17 +118,9 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
     // 若使用者輸入了有效數值，就將其更新回全域參數中，以便其他功能使用
     if (limit != null) {
       AppParams.batteryAlertLimit = limit;
-    }
 
-    if (limit != null && _batteryLevel < limit) {
-      // 低於門檻且尚未警告過，才發送系統通知
-      if (!_hasAlerted) {
-        _showBatteryNotification(_batteryLevel, limit);
-        _hasAlerted = true; // 標記已警告
-      }
-    } else {
-      // 電量回升或修改了更低的設定值，重置警告狀態
-      _hasAlerted = false;
+      // 通知全域背景服務：設定值已變更，請重置警告狀態並重新檢查
+      BatteryMonitorService().resetAlert();
     }
   }
 
@@ -220,6 +168,27 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
     }
   }
 
+  Future<void> _openBluetoothSettings() async {
+    // 平台防呆機制
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
+      }
+      return;
+    }
+
+    // 呼叫 Android 原生的藍牙設定頁面
+    const AndroidIntent intent = AndroidIntent(action: 'android.settings.BLUETOOTH_SETTINGS');
+
+    try {
+      await intent.launch();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('無法開啟藍牙設定: $e')));
+      }
+    }
+  }
+
   // --- 畫面構建 ---
   @override
   Widget build(BuildContext context) {
@@ -241,6 +210,8 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
               _buildBatteryCard(),
               const SizedBox(height: 16),
               _buildWifiCard(),
+              const SizedBox(height: 16),
+              _buildBluetoothCard(),
             ],
           ),
         ),
@@ -315,6 +286,20 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
         subtitle: const Text('點擊前往 WiFi 設定'),
         trailing: const Icon(Icons.arrow_forward_ios),
         onTap: _openWifiSettings,
+      ),
+    );
+  }
+
+  Widget _buildBluetoothCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.bluetooth, size: 36, color: Colors.blue),
+        title: const Text('藍牙設定', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        subtitle: const Text('點擊前往藍牙設定頁面'),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: _openBluetoothSettings,
       ),
     );
   }

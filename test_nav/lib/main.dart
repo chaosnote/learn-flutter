@@ -4,7 +4,11 @@ import 'package:flutter/gestures.dart'; // 引入 gestures 以支援滑鼠拖曳
 
 import 'pages/main_scaffold_page.dart';
 
-void main() {
+void main() async {
+  // 確保 Flutter 核心初始化完成，才能執行非同步的服務初始化
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. 必須先執行 runApp，讓 Flutter 建立主畫面與 Activity
   runApp(const MyApp());
 }
 
