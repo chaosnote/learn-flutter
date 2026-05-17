@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import '../models/params.dart';
 
@@ -159,6 +161,27 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
 
   bool get _isWifiConnected => _connectionStatus.contains(ConnectivityResult.wifi);
 
+  Future<void> _openWifiSettings() async {
+    // 平台防呆機制
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
+      }
+      return;
+    }
+
+    // 呼叫 Android 原生的 WiFi 設定頁面
+    const AndroidIntent intent = AndroidIntent(action: 'android.settings.WIFI_SETTINGS');
+
+    try {
+      await intent.launch();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('無法開啟 WiFi 設定: $e')));
+      }
+    }
+  }
+
   // --- 畫面構建 ---
   @override
   Widget build(BuildContext context) {
@@ -251,6 +274,9 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
           _isWifiConnected ? 'WiFi 已連線' : 'WiFi 未連線',
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
+        subtitle: const Text('點擊前往 WiFi 設定'),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: _openWifiSettings,
       ),
     );
   }
