@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import '../models/params.dart';
@@ -16,6 +17,9 @@ class DeviceStatusPage extends StatefulWidget {
 }
 
 class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBindingObserver {
+  // === 通知設定 ===
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
   // === 聲音控制 ===
   bool _isSoundOn = true;
   static const platform = MethodChannel('com.example.test_nav/volume');
@@ -39,6 +43,7 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
 
     _batteryLimitController = TextEditingController(text: AppParams.batteryAlertLimit.toString());
 
+    _initNotifications();
     _fetchCurrentVolume();
     _initBattery();
     _initConnectivity();
@@ -60,6 +65,45 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
       _checkBatteryLevel();
       _initConnectivity(); // 背景回來時也重新拿一次網路狀態
     }
+  }
+
+  // --- 系統通知邏輯 ---
+  Future<void> _initNotifications() async {
+    if (kIsWeb) return; // 網頁版不支援本機通知
+
+    // 初始化設定，使用 Android 專案預設的 APP 啟動圖示做為通知圖示
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // 針對 Android 13 (API 33) 以上請求通知權限
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+    }
+  }
+
+  Future<void> _showBatteryNotification(int level, int limit) async {
+    if (kIsWeb) return;
+
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'battery_alert_channel', // 頻道 ID
+      '電量警告', // 頻道名稱
+      channelDescription: '當電量低於設定值時發出系統通知',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+
+    // 發送通知
+    await _flutterLocalNotificationsPlugin.show(0, '⚠️ 電量警告', '目前電量 ($level%) 低於設定值 ($limit%)', platformDetails);
   }
 
   // --- 聲音控制邏輯 ---
@@ -121,15 +165,9 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
     }
 
     if (limit != null && _batteryLevel < limit) {
-      // 低於門檻且尚未警告過，才跳出 SnackBar 提醒
+      // 低於門檻且尚未警告過，才發送系統通知
       if (!_hasAlerted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('⚠️ 警告：目前電量 ($_batteryLevel%) 低於設定值 ($limit%)'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        _showBatteryNotification(_batteryLevel, limit);
         _hasAlerted = true; // 標記已警告
       }
     } else {
