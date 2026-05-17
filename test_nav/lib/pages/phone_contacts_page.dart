@@ -161,7 +161,7 @@ class _PhoneContactsPageState extends State<PhoneContactsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Phone 聯絡人'),
+        title: const Text('Phone 聯絡人', style: TextStyle(fontSize: 28)),
         actions: [
           IconButton(
             onPressed: _importContact,
@@ -176,14 +176,19 @@ class _PhoneContactsPageState extends State<PhoneContactsPage> {
               itemCount: _contacts.length,
               itemBuilder: (context, index) {
                 final contact = _contacts[index];
-                return ListTile(
-                  leading: const Icon(Icons.person, size: 40),
-                  title: Text(contact.name),
-                  subtitle: Text(contact.phone),
-                  onTap: () => _dialContact(contact.phone),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red, size: 32),
-                    onPressed: () => _deleteContact(index),
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: const Icon(Icons.person, size: 36),
+                    title: Text(contact.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    subtitle: Text(contact.phone, style: const TextStyle(fontSize: 16)),
+                    onTap: () => _dialContact(contact.phone),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red, size: 32),
+                      onPressed: () => _deleteContact(index),
+                    ),
                   ),
                 );
               },

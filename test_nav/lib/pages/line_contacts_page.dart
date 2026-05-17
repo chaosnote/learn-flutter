@@ -188,25 +188,31 @@ class _LineContactsPageState extends State<LineContactsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Line 聯絡人')),
+      appBar: AppBar(title: const Text('Line 聯絡人', style: TextStyle(fontSize: 28))),
       body: _contacts.isEmpty
           ? const Center(child: Text('目前沒有聯絡人，請點擊右下角新增'))
           : ListView.builder(
               itemCount: _contacts.length,
               itemBuilder: (context, index) {
                 final contact = _contacts[index];
-                return ListTile(
-                  leading: const Icon(Icons.chat, size: 40, color: Colors.green),
-                  title: Text(contact.name),
-                  subtitle: Text(
-                    contact.lineId,
-                    maxLines: 1, // 限制網址只能顯示一行
-                    overflow: TextOverflow.ellipsis, // 超出範圍顯示 ...
-                  ),
-                  onTap: () => _launchLineProfile(contact.lineId),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red, size: 32),
-                    onPressed: () => _deleteContact(index),
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading: const Icon(Icons.chat, size: 36, color: Colors.green),
+                    title: Text(contact.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    subtitle: Text(
+                      contact.lineId,
+                      style: const TextStyle(fontSize: 16),
+                      maxLines: 1, // 限制網址只能顯示一行
+                      overflow: TextOverflow.ellipsis, // 超出範圍顯示 ...
+                    ),
+                    onTap: () => _launchLineProfile(contact.lineId),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red, size: 32),
+                      onPressed: () => _deleteContact(index),
+                    ),
                   ),
                 );
               },
