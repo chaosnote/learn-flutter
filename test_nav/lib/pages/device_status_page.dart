@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+import '../models/params.dart';
+
 class DeviceStatusPage extends StatefulWidget {
   const DeviceStatusPage({super.key});
 
@@ -19,7 +21,7 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   // === 電池狀態 ===
   final Battery _battery = Battery();
   int _batteryLevel = 100;
-  final TextEditingController _batteryLimitController = TextEditingController(text: '20');
+  late final TextEditingController _batteryLimitController;
   Timer? _batteryCheckTimer;
   bool _hasAlerted = false; // 防止一直重複跳出警告
 
@@ -32,6 +34,8 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _batteryLimitController = TextEditingController(text: AppParams.batteryAlertLimit.toString());
 
     _fetchCurrentVolume();
     _initBattery();
@@ -108,6 +112,11 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   void _checkBatteryAlert() {
     final limitText = _batteryLimitController.text;
     final limit = int.tryParse(limitText);
+
+    // 若使用者輸入了有效數值，就將其更新回全域參數中，以便其他功能使用
+    if (limit != null) {
+      AppParams.batteryAlertLimit = limit;
+    }
 
     if (limit != null && _batteryLevel < limit) {
       // 低於門檻且尚未警告過，才跳出 SnackBar 提醒
