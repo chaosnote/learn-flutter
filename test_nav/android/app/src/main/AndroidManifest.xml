@@ -2,11 +2,24 @@
 
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- 針對 Android 14 以上增加特殊用途的前景服務權限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
     <application
         android:label="test_nav"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        
+        <!-- 明確宣告 flutter_background_service 的服務類型與用途 -->
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Battery Level Monitoring" />
+        </service>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

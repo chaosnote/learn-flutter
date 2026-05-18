@@ -7,7 +7,6 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import '../models/params.dart';
-import '../services/battery_monitor_service.dart';
 
 class DeviceStatusPage extends StatefulWidget {
   const DeviceStatusPage({super.key});
@@ -24,7 +23,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
   // === 電池狀態 ===
   final Battery _battery = Battery();
   int _batteryLevel = 100;
-  late final TextEditingController _batteryLimitController;
   Timer? _batteryCheckTimer;
 
   // === WiFi 狀態 ===
@@ -37,8 +35,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _batteryLimitController = TextEditingController(text: AppParams.batteryAlertLimit.toString());
-
     _fetchCurrentVolume();
     _initBattery();
     _initConnectivity();
@@ -49,7 +45,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
     _batteryCheckTimer?.cancel();
-    _batteryLimitController.dispose();
     super.dispose();
   }
 
@@ -113,19 +108,6 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
       }
     } catch (e) {
       debugPrint("無法取得電量: $e");
-    }
-  }
-
-  void _checkBatteryAlert() {
-    final limitText = _batteryLimitController.text;
-    final limit = int.tryParse(limitText);
-
-    // 若使用者輸入了有效數值，就將其更新回全域參數中，以便其他功能使用
-    if (limit != null) {
-      AppParams.batteryAlertLimit = limit;
-
-      // 通知全域背景服務：設定值已變更，請重置警告狀態並重新檢查
-      BatteryMonitorService().resetAlert();
     }
   }
 
@@ -256,18 +238,7 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
             const SizedBox(width: 16),
             Text('$_batteryLevel%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const Spacer(),
-            const Text('低於 ', style: TextStyle(fontSize: 16)),
-            SizedBox(
-              width: 50,
-              child: TextField(
-                controller: _batteryLimitController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
-                onChanged: (_) => _checkBatteryAlert(),
-              ),
-            ),
-            const Text(' % 提醒', style: TextStyle(fontSize: 16)),
+            Text('低於 ${AppParams.batteryAlertLimit}% 提醒', style: const TextStyle(fontSize: 16)),
           ],
         ),
       ),

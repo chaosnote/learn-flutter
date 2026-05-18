@@ -1,11 +1,60 @@
 import 'dart:async';
+import 'dart:ui';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import '../models/params.dart';
+
+// 必須是頂層獨立函式 (Top-Level Function)，作為背景服務 (Isolate) 的入口點
+@pragma('vm:entry-point')
+void onStart(ServiceInstance service) async {
+  // 確保 Flutter 引擎在背景已初始化
+  DartPluginRegistrant.ensureInitialized();
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final Battery battery = Battery();
+
+  // 監聽來自 UI 傳遞過來的新設定值 (因為背景 Isolate 與 UI Isolate 記憶體是不共用的)
+  service.on('updateLimit').listen((event) {
+    if (event != null && event['limit'] != null) {
+      AppParams.batteryAlertLimit = event['limit'];
+      debugPrint("[背景電量監控] 收到 UI 更新的新設定值: ${AppParams.batteryAlertLimit}%");
+    }
+  });
+
+  // 背景全域計時器：系統接管，關掉 App 也會跑
+  Timer.periodic(Duration(minutes: AppParams.batteryDurationCheck), (timer) async {
+    try {
+      final level = await battery.batteryLevel;
+      final limit = AppParams.batteryAlertLimit;
+
+      debugPrint("[背景電量監控] 檢查中... 目前 $level% / 設定 $limit%");
+
+      if (level < limit) {
+        final Int64List customVibration = Int64List.fromList(<int>[0, 600, 300, 600]);
+        final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+          'battery_alert_channel_v3',
+          '系統電量警告',
+          channelDescription: '當設備電量低於您的設定值時，發出推播通知',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          vibrationPattern: customVibration,
+        );
+        final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+
+        await flutterLocalNotificationsPlugin.show(0, '⚠️ 電量警告', '目前電量 ($level%) 低於設定值 ($limit%)', platformDetails);
+      }
+    } catch (e) {
+      debugPrint("背景取得電量失敗: $e");
+    }
+  });
+}
 
 class BatteryMonitorService {
   // 單例模式 (Singleton)：確保整個 App 只有一個監控實體
@@ -14,8 +63,7 @@ class BatteryMonitorService {
   BatteryMonitorService._internal();
 
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  final Battery _battery = Battery();
-  Timer? _timer;
+  final FlutterBackgroundService _backgroundService = FlutterBackgroundService();
 
   Future<void> init() async {
     if (kIsWeb) return; // 網頁版不支援本機通知
@@ -23,9 +71,8 @@ class BatteryMonitorService {
     debugPrint("[BatteryMonitorService] 進入 init()...");
 
     // 1. 初始化通知設定
-    // ⚠️ 已改為使用專屬的 png 圖示，避免 Android Adaptive Icon 造成的嚴重閃退
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(
-      'ic_notification',
+      AppParams.batteryIconNotification,
     );
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -39,9 +86,9 @@ class BatteryMonitorService {
       debugPrint("[BatteryMonitorService] 🚨 通知套件初始化失敗: $e");
     }
 
-    // 2. 啟動全域背景檢查
-    debugPrint("[BatteryMonitorService] 準備啟動 _startMonitoring()...");
-    _startMonitoring();
+    // 2. 初始化並啟動 Android 背景前景服務
+    debugPrint("[BatteryMonitorService] 準備啟動真背景服務...");
+    await _initBackgroundService();
 
     // 3. 延遲請求通知權限，確保主畫面已經渲染完成，避免啟動時找不到 Activity 而卡死
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -53,55 +100,23 @@ class BatteryMonitorService {
     }
   }
 
-  void _startMonitoring() {
-    _checkBattery(); // 啟動時先檢查一次
-    _timer?.cancel();
-    // 全域計時器：只要 App 還在記憶體中，就會跨頁面持續執行
-    _timer = Timer.periodic(const Duration(minutes: AppParams.batteryDurationCheck), (timer) {
-      _checkBattery();
-    });
-  }
-
-  Future<void> _checkBattery() async {
-    try {
-      final level = await _battery.batteryLevel;
-      final limit = AppParams.batteryAlertLimit;
-
-      debugPrint("[全域電量監控] 檢查中... 目前 $level% / 設定 $limit%");
-
-      if (level < limit) {
-        _showBatteryNotification(level, limit);
-      }
-    } catch (e) {
-      debugPrint("背景取得電量失敗: $e");
-    }
-  }
-
-  // 提供給 UI 呼叫：當使用者在設備狀態頁面修改 % 數時，重新檢查
-  void resetAlert() {
-    _checkBattery();
-  }
-
-  Future<void> _showBatteryNotification(int level, int limit) async {
-    // 將震動陣列獨立提取，並修改毫秒數，避免與公開範例重疊
-    final Int64List customVibration = Int64List.fromList(<int>[0, 600, 300, 600]);
-
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'battery_alert_channel_v3', // 順便更新 ID 確保新設定生效
-      '系統電量警告',
-      channelDescription: '當設備電量低於您的設定值時，發出推播通知',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      vibrationPattern: customVibration,
+  Future<void> _initBackgroundService() async {
+    await _backgroundService.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: onStart,
+        autoStart: true,
+        isForegroundMode: true, // 開啟前景模式，這會產生一個無法滑掉的常駐通知，確保系統絕不殺死 App
+        notificationChannelId: 'battery_alert_channel_v3',
+        initialNotificationTitle: '電量安全監控中',
+        initialNotificationContent: '系統正在背景每 5 分鐘檢查一次電量',
+        foregroundServiceNotificationId: 888,
+      ),
+      iosConfiguration: IosConfiguration(autoStart: true, onForeground: onStart),
     );
-    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+  }
 
-    try {
-      await _flutterLocalNotificationsPlugin.show(0, '⚠️ 電量警告', '目前電量 ($level%) 低於設定值 ($limit%)', platformDetails);
-    } catch (e) {
-      debugPrint("發送通知失敗: $e");
-    }
+  // 提供給 UI 呼叫：當使用者在設備狀態頁面修改 % 數時，通知「背景空間」更新變數
+  void resetAlert() {
+    _backgroundService.invoke('updateLimit', {'limit': AppParams.batteryAlertLimit});
   }
 }
