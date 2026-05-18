@@ -73,6 +73,8 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
       }
     } on PlatformException catch (e) {
       debugPrint("無法取得音量: '${e.message}'.");
+    } catch (e) {
+      debugPrint("取得音量發生未知錯誤 (可能是原生端未實作): $e");
     }
   }
 
@@ -85,6 +87,8 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
       await _fetchCurrentVolume();
     } on PlatformException catch (e) {
       debugPrint("無法控制音量: '${e.message}'.");
+    } catch (e) {
+      debugPrint("控制音量發生未知錯誤: $e");
     }
   }
 
@@ -104,7 +108,8 @@ class _DeviceStatusPageState extends State<DeviceStatusPage> with WidgetsBinding
         setState(() {
           _batteryLevel = level;
         });
-        _checkBatteryAlert();
+        // 移除這裡的 _checkBatteryAlert()
+        // 讓警告重置的權限保留給 TextField 的 onChanged 去觸發就好
       }
     } catch (e) {
       debugPrint("無法取得電量: $e");

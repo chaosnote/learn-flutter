@@ -22,6 +22,8 @@ class BatteryMonitorService {
   Future<void> init() async {
     if (kIsWeb) return; // 網頁版不支援本機通知
 
+    debugPrint("[BatteryMonitorService] 進入 init()...");
+
     // 1. 初始化通知設定
     // ⚠️ 已改為使用專屬的 png 圖示，避免 Android Adaptive Icon 造成的嚴重閃退
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings(
@@ -31,9 +33,16 @@ class BatteryMonitorService {
       android: initializationSettingsAndroid,
     );
 
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    try {
+      debugPrint("[BatteryMonitorService] 準備初始化通知套件...");
+      await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      debugPrint("[BatteryMonitorService] 通知套件初始化成功！");
+    } catch (e) {
+      debugPrint("[BatteryMonitorService] 🚨 通知套件初始化失敗: $e");
+    }
 
     // 2. 啟動全域背景檢查
+    debugPrint("[BatteryMonitorService] 準備啟動 _startMonitoring()...");
     _startMonitoring();
 
     // 3. 延遲請求通知權限，確保主畫面已經渲染完成，避免啟動時找不到 Activity 而卡死
@@ -59,6 +68,8 @@ class BatteryMonitorService {
     try {
       final level = await _battery.batteryLevel;
       final limit = AppParams.batteryAlertLimit;
+
+      debugPrint("[全域電量監控] 檢查中... 目前 $level% / 設定 $limit% (已警告過: $_hasAlerted)");
 
       if (level < limit) {
         // 如果「還沒警告過」，或者是「電量比上次警告時還要低 (又掉電了)」，就發出通知

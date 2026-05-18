@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
-import 'package:android_intent_plus/android_intent.dart';
-
 import '../models/app_packages.dart';
+import '../services/app_launcher_service.dart';
 
 class LaunchAppPage extends StatefulWidget {
   const LaunchAppPage({super.key});
@@ -13,6 +12,9 @@ class LaunchAppPage extends StatefulWidget {
 }
 
 class _LaunchAppPageState extends State<LaunchAppPage> {
+  // Get the service instance
+  final AppLauncherService _launcherService = AppLauncherService();
+
   // 用來記錄每個 App 的安裝狀態 (key: package name, value: 是否已安裝)
   // null 代表還在檢查中
   final Map<String, bool?> _installedStatus = {};
@@ -23,51 +25,39 @@ class _LaunchAppPageState extends State<LaunchAppPage> {
     _checkAllAppsStatus();
   }
 
-  // 畫面載入時，批次檢查所有軟體的安裝狀態
+  // Batch check all app statuses using the service.
   Future<void> _checkAllAppsStatus() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
-
-    final packages = [AppPackages.line, AppPackages.facebook, AppPackages.youtube];
-
-    for (final pkg in packages) {
-      final AndroidIntent intent = AndroidIntent(
-        action: 'action_main',
-        category: 'android.intent.category.LAUNCHER',
-        package: pkg,
-      );
-      final bool isInstalled = await intent.canResolveActivity() ?? false;
-      if (mounted) {
-        setState(() => _installedStatus[pkg] = isInstalled);
-      }
-    }
-  }
-
-  // 共用的啟動/檢查邏輯
-  Future<void> _launchOrInstallApp(String packageName) async {
-    // 平台防呆機制
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
+      // On non-Android, we can immediately set all to false.
+      setState(() {
+        _installedStatus[AppPackages.line] = false;
+        _installedStatus[AppPackages.facebook] = false;
+        _installedStatus[AppPackages.youtube] = false;
+      });
       return;
     }
 
-    // 設定用來「啟動 App」的 Intent
-    final AndroidIntent launchIntent = AndroidIntent(
-      action: 'action_main',
-      category: 'android.intent.category.LAUNCHER',
-      package: packageName,
-    );
+    final packages = [AppPackages.line, AppPackages.facebook, AppPackages.youtube];
+    final statuses = await _launcherService.checkInstallationStatus(packages);
 
-    // 檢查這個啟動 Intent 是否有效 (代表已安裝)
-    final bool isInstalled = await launchIntent.canResolveActivity() ?? false;
-
-    if (isInstalled) {
-      // 已安裝：直接啟動該 App
-      await launchIntent.launch();
-    } else {
-      // 未安裝：導引至 Google Play 商店
-      final AndroidIntent storeIntent = AndroidIntent(action: 'action_view', data: 'market://details?id=$packageName');
-      await storeIntent.launch();
+    if (mounted) {
+      // Update the UI state in a single call.
+      setState(() => _installedStatus.addAll(statuses));
     }
+  }
+
+  // The UI-facing method to handle the tap event.
+  Future<void> _launchOrInstallApp(String packageName) async {
+    // Handle UI feedback for non-supported platforms.
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('此功能僅支援 Android 設備')));
+      }
+      return;
+    }
+
+    // Delegate the core logic to the service.
+    await _launcherService.launchOrInstallApp(packageName);
   }
 
   // 建立清單項目的共用小工具
