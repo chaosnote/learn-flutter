@@ -16,8 +16,6 @@ class BatteryMonitorService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final Battery _battery = Battery();
   Timer? _timer;
-  bool _hasAlerted = false;
-  int? _lastAlertedLevel; // 記錄上一次發出警告時的電量
 
   Future<void> init() async {
     if (kIsWeb) return; // 網頁版不支援本機通知
@@ -59,7 +57,7 @@ class BatteryMonitorService {
     _checkBattery(); // 啟動時先檢查一次
     _timer?.cancel();
     // 全域計時器：只要 App 還在記憶體中，就會跨頁面持續執行
-    _timer = Timer.periodic(const Duration(seconds: 60), (timer) {
+    _timer = Timer.periodic(const Duration(minutes: AppParams.batteryDurationCheck), (timer) {
       _checkBattery();
     });
   }
@@ -69,28 +67,18 @@ class BatteryMonitorService {
       final level = await _battery.batteryLevel;
       final limit = AppParams.batteryAlertLimit;
 
-      debugPrint("[全域電量監控] 檢查中... 目前 $level% / 設定 $limit% (已警告過: $_hasAlerted)");
+      debugPrint("[全域電量監控] 檢查中... 目前 $level% / 設定 $limit%");
 
       if (level < limit) {
-        // 如果「還沒警告過」，或者是「電量比上次警告時還要低 (又掉電了)」，就發出通知
-        if (!_hasAlerted || (_lastAlertedLevel != null && level < _lastAlertedLevel!)) {
-          _showBatteryNotification(level, limit);
-          _hasAlerted = true; // 標記已警告
-          _lastAlertedLevel = level; // 記下這次警告的電量
-        }
-      } else {
-        _lastAlertedLevel = null; // 電量回升，清除記錄
-        _hasAlerted = false; // 電量回升，重置警告狀態
+        _showBatteryNotification(level, limit);
       }
     } catch (e) {
       debugPrint("背景取得電量失敗: $e");
     }
   }
 
-  // 提供給 UI 呼叫：當使用者在設備狀態頁面修改 % 數時，重置警告狀態
+  // 提供給 UI 呼叫：當使用者在設備狀態頁面修改 % 數時，重新檢查
   void resetAlert() {
-    _hasAlerted = false;
-    _lastAlertedLevel = null;
     _checkBattery();
   }
 
