@@ -18,14 +18,6 @@ void onStart(ServiceInstance service) async {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final Battery battery = Battery();
 
-  // 監聽來自 UI 傳遞過來的新設定值 (因為背景 Isolate 與 UI Isolate 記憶體是不共用的)
-  service.on('updateLimit').listen((event) {
-    if (event != null && event['limit'] != null) {
-      AppParams.batteryAlertLimit = event['limit'];
-      debugPrint("[背景電量監控] 收到 UI 更新的新設定值: ${AppParams.batteryAlertLimit}%");
-    }
-  });
-
   // 背景全域計時器：系統接管，關掉 App 也會跑
   Timer.periodic(Duration(minutes: AppParams.batteryDurationCheck), (timer) async {
     try {
@@ -113,10 +105,5 @@ class BatteryMonitorService {
       ),
       iosConfiguration: IosConfiguration(autoStart: true, onForeground: onStart),
     );
-  }
-
-  // 提供給 UI 呼叫：當使用者在設備狀態頁面修改 % 數時，通知「背景空間」更新變數
-  void resetAlert() {
-    _backgroundService.invoke('updateLimit', {'limit': AppParams.batteryAlertLimit});
   }
 }
