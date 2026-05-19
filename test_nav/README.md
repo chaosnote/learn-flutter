@@ -2,16 +2,13 @@
 
 A new Flutter project.
 
-## Getting Started
+## CMD
 
-This project is a starting point for a Flutter application.
+``` shell
+更新相依性
+flutter pub get
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+編譯
+flutter build apk --release
+∟ build\app\outputs\flutter-apk\app-release.apk
+```
