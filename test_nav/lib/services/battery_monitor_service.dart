@@ -74,6 +74,19 @@ class BatteryMonitorService {
       debugPrint("[BatteryMonitorService] 準備初始化通知套件...");
       await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
       debugPrint("[BatteryMonitorService] 通知套件初始化成功！");
+
+      // 在啟動前景服務前，必須先手動建立 Notification Channel (Android 8.0+)
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        const AndroidNotificationChannel serviceChannel = AndroidNotificationChannel(
+          'battery_monitor_service_channel', // 專為背景常駐服務建立的頻道 ID
+          '電量監控服務狀態',
+          description: '顯示背景監控服務是否正在執行',
+          importance: Importance.low, // 設為 low，確保常駐通知不會發出聲音或彈出干擾
+        );
+        await _flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(serviceChannel);
+      }
     } catch (e) {
       debugPrint("[BatteryMonitorService] 🚨 通知套件初始化失敗: $e");
     }
@@ -98,7 +111,7 @@ class BatteryMonitorService {
         onStart: onStart,
         autoStart: true,
         isForegroundMode: true, // 開啟前景模式，這會產生一個無法滑掉的常駐通知，確保系統絕不殺死 App
-        notificationChannelId: 'battery_alert_channel_v3',
+        notificationChannelId: 'battery_monitor_service_channel', // 修改為上方新建立的常駐服務專用頻道
         initialNotificationTitle: '電量安全監控中',
         initialNotificationContent: '系統正在背景每 5 分鐘檢查一次電量',
         foregroundServiceNotificationId: 888,
