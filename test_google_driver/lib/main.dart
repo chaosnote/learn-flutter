@@ -34,39 +34,56 @@ class _MyHomePageState extends State<MyHomePage> {
   String _fileContent = '';
   bool _isLoading = false;
 
-  GoogleSignIn? _googleSignIn;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: [drive.DriveApi.driveFileScope]);
   drive.DriveApi? _driveApi;
 
-  Future<void> _authenticate() async {
-    setState(() => _isLoading = true);
-    _googleSignIn = GoogleSignIn(scopes: [drive.DriveApi.driveFileScope]);
-
+  /// 執行核心驗證邏輯，更新 [_driveApi] 實例。
+  /// 成功回傳 true，失敗或取消回傳 false。
+  Future<bool> _performAuth() async {
     try {
-      final account = await _googleSignIn!.signIn();
+      final account = await _googleSignIn.signIn();
       if (account != null) {
         final headers = await account.authHeaders;
         final authenticateClient = GoogleAuthClient(headers);
         _driveApi = drive.DriveApi(authenticateClient);
         debugPrint('Google Auth 驗證成功');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('驗證成功')));
-        }
+        return true;
       }
+      return false; // 使用者取消登入
     } catch (e) {
       debugPrint('Google Auth 驗證失敗: $e');
+      _driveApi = null; // 確保失敗時 api 為 null
+      return false;
+    }
+  }
+
+  Future<void> _authenticate() async {
+    setState(() => _isLoading = true);
+    try {
+      final success = await _performAuth();
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('驗證成功')));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _readFile() async {
-    if (_driveApi == null) {
-      debugPrint('請先進行驗證');
-      return;
-    }
-    setState(() => _isLoading = true);
+  /// 確保 Drive API 已準備就緒，若需要則執行驗證。
+  /// 若 API 準備就緒回傳 true，否則回傳 false。
+  Future<bool> _ensureApiReady() async {
+    if (_driveApi != null) return true;
+    return await _performAuth();
+  }
 
+  Future<void> _readFile() async {
+    setState(() => _isLoading = true);
     try {
+      if (!await _ensureApiReady()) {
+        debugPrint('驗證未完成，取消讀取動作');
+        return;
+      }
+
       final fileList = await _driveApi!.files.list(q: "name = 'test_google_driver.json' and trashed = false");
 
       if (fileList.files == null || fileList.files!.isEmpty) {
@@ -93,13 +110,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _writeFile() async {
-    if (_driveApi == null) {
-      debugPrint('請先進行驗證');
-      return;
-    }
     setState(() => _isLoading = true);
-
     try {
+      if (!await _ensureApiReady()) {
+        debugPrint('驗證未完成，取消寫入動作');
+        return;
+      }
       final content = jsonEncode({"Time": DateTime.now().toIso8601String()});
       final stream = Future.value(utf8.encode(content)).asStream().asBroadcastStream();
       final media = drive.Media(stream, utf8.encode(content).length);
@@ -115,6 +131,9 @@ class _MyHomePageState extends State<MyHomePage> {
         await _driveApi!.files.update(drive.File(), fileId, uploadMedia: media);
         debugPrint('更新檔案內容成功: $content');
       }
+      setState(() {
+        _fileContent = content;
+      });
     } catch (e) {
       debugPrint('寫入失敗: $e');
     } finally {
