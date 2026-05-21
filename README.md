@@ -2,6 +2,14 @@
 
 學習
 
+```
+建立空專案
+flutter create --platforms=android 專案名稱
+
+未來想增加 web 平台、切換至 專案根目錄
+flutter create --platforms=web,android .
+```
+
 ### 官方學習 - first_app
 
 https://codelabs.developers.google.com/codelabs/flutter-codelab-first?hl=zh-tw#0
@@ -26,3 +34,5 @@ cd Flutter Project/android
 set JAVA_HOME="install path\Android\Android Studio\jbr"
 gradlew signingReport
 ```
+
+### 官方學習 - test_media
