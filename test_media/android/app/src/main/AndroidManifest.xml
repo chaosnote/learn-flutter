@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 新增錄音所需的麥克風權限 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:label="test_media"
         android:name="${applicationName}"
