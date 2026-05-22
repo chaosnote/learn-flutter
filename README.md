@@ -35,4 +35,4 @@ set JAVA_HOME="install path\Android\Android Studio\jbr"
 gradlew signingReport
 ```
 
-### 官方學習 - test_media
+### 測試錄音程式 - test_media
