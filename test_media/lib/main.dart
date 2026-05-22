@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '錄音與播放測試',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal), useMaterial3: true),
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.red), useMaterial3: true),
       home: const MediaHomePage(),
     );
   }
@@ -58,10 +58,40 @@ class _MediaHomePageState extends State<MediaHomePage> {
     });
 
     _initRecorder();
+    _loadPlaylist(); // 初始化時讀取現有錄音檔
   }
 
   Future<void> _initRecorder() async {
     await _audioRecorder.openRecorder();
+  }
+
+  // 讀取已經存在的錄音檔
+  Future<void> _loadPlaylist() async {
+    final dir = await getDownloadsDirectory();
+    if (dir == null || !dir.existsSync()) return;
+
+    final List<String> loadedFiles = [];
+    try {
+      final files = dir.listSync();
+      for (var entity in files) {
+        // 確保只讀取副檔名為 .aac 且包含 '錄音檔_' 的檔案，避免讀到其他下載物
+        if (entity is File && entity.path.endsWith('.aac') && entity.path.contains('錄音檔_')) {
+          loadedFiles.add(entity.path);
+        }
+      }
+    } catch (e) {
+      debugPrint('讀取目錄失敗: $e');
+    }
+
+    // 依照檔名遞減排序 (讓最新錄製的顯示在最上面)
+    loadedFiles.sort((a, b) => b.compareTo(a));
+
+    if (mounted) {
+      setState(() {
+        _playlist.clear();
+        _playlist.addAll(loadedFiles);
+      });
+    }
   }
 
   @override
@@ -121,10 +151,18 @@ class _MediaHomePageState extends State<MediaHomePage> {
   Future<void> _saveRecording() async {
     if (_tempRecordPath == null) return;
 
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getDownloadsDirectory();
+    if (dir == null) return; // 加上 null 檢查：如果平台不支援下載目錄，則終止儲存動作
+
+    // 根據 path_provider 的建議，在使用前先確保目錄存在
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+
     // 儲存的檔案副檔名也同步改為 .aac
     final String newRecordName = '錄音檔_${DateTime.now().toIso8601String().replaceAll(':', '').split('.')[0]}.aac';
     final String newPath = '${dir.path}/$newRecordName';
+    debugPrint('SaveFilePath: $newPath');
 
     final tempFile = File(_tempRecordPath!);
     if (tempFile.existsSync()) {
@@ -133,7 +171,7 @@ class _MediaHomePageState extends State<MediaHomePage> {
     }
 
     setState(() {
-      _playlist.add(newPath);
+      _playlist.insert(0, newPath); // 配合排序，將新錄音檔直接插入到清單最上方
       _recordState = RecordState.idle;
       _tempRecordPath = null;
     });
@@ -173,104 +211,133 @@ class _MediaHomePageState extends State<MediaHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: const Text('錄音與播放程式')),
-      body: Column(children: [_buildRecorderSection(), const Divider(height: 1), _buildPlaylistSection()]),
+      body: _buildPlaylistSection(),
+      bottomNavigationBar: _buildRecorderDock(),
     );
   }
 
-  // 建構上方錄音控制區塊
-  Widget _buildRecorderSection() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // 建構下方錄音控制 Dock
+  Widget _buildRecorderDock() {
+    return BottomAppBar(
+      height: 110, // 微調高度確保空間充足
+      padding: EdgeInsets.zero, // 移除 BottomAppBar 預設的內距，釋放最大空間
+      child: Row(
         children: [
-          Text('錄音控制', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _recordState == RecordState.idle ? _startRecording : null,
-                icon: const Icon(Icons.mic),
-                label: const Text('開始'),
-              ),
-              ElevatedButton.icon(
-                onPressed: _recordState == RecordState.recording ? _stopRecording : null,
-                icon: const Icon(Icons.stop),
-                label: const Text('停止'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _recordState != RecordState.idle ? _cancelRecording : null,
-                icon: const Icon(Icons.cancel),
-                label: const Text('取消'),
-              ),
-              FilledButton.icon(
-                onPressed: _recordState == RecordState.stopped ? _saveRecording : null,
-                icon: const Icon(Icons.save),
-                label: const Text('儲存'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 建構下方播放清單區塊
-  Widget _buildPlaylistSection() {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text('播放清單 (${_playlist.length} 個物件)', style: Theme.of(context).textTheme.titleLarge),
+          Expanded(
+            child: _buildDockButton(
+              icon: Icons.mic,
+              label: '開始',
+              onPressed: _recordState == RecordState.idle ? _startRecording : null,
+            ),
           ),
           Expanded(
-            child: _playlist.isEmpty
-                ? const Center(child: Text('目前沒有錄音檔'))
-                : ListView.builder(
-                    itemCount: _playlist.length,
-                    itemBuilder: (context, index) {
-                      final item = _playlist[index];
-                      final isPlaying = _playingItem == item;
-                      return ListTile(
-                        leading: CircleAvatar(child: Icon(isPlaying ? Icons.volume_up : Icons.audio_file)),
-                        title: Text(item.split('/').last), // 使用 split 切割路徑，只取最後面的檔名
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!isPlaying)
-                              IconButton(
-                                icon: const Icon(Icons.play_arrow, color: Colors.green),
-                                onPressed: () => _startPlaying(item),
-                                tooltip: '開始',
-                              )
-                            else
-                              IconButton(
-                                icon: const Icon(Icons.stop, color: Colors.orange),
-                                onPressed: _stopPlaying,
-                                tooltip: '停止',
-                              ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteItem(item),
-                              tooltip: '刪除',
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+            child: _buildDockButton(
+              icon: Icons.stop,
+              label: '停止',
+              onPressed: _recordState == RecordState.recording ? _stopRecording : null,
+            ),
+          ),
+          Expanded(
+            child: _buildDockButton(
+              icon: Icons.cancel,
+              label: '取消',
+              onPressed: _recordState != RecordState.idle ? _cancelRecording : null,
+            ),
+          ),
+          Expanded(
+            child: _buildDockButton(
+              icon: Icons.save,
+              label: '儲存',
+              onPressed: _recordState == RecordState.stopped ? _saveRecording : null,
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDockButton({required IconData icon, required String label, VoidCallback? onPressed}) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0), // 移除水平固定內距，交給外層的 Expanded 自動平分寬度
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 40.0, // 放大圖示尺寸
+              color: onPressed != null ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 18.0, // 放大文字尺寸
+                fontWeight: FontWeight.w500, // 讓字體稍微加粗，增加識別度
+                color: onPressed != null ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 建構播放清單區塊
+  Widget _buildPlaylistSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text('播放清單 (${_playlist.length} 個物件)', style: Theme.of(context).textTheme.titleLarge),
+        ),
+        Expanded(
+          child: _playlist.isEmpty
+              ? const Center(child: Text('目前沒有錄音檔'))
+              : ListView.builder(
+                  itemCount: _playlist.length,
+                  itemBuilder: (context, index) {
+                    final item = _playlist[index];
+                    final isPlaying = _playingItem == item;
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // 增加項目整體的上下內距，擴大視覺空間
+                      leading: CircleAvatar(child: Icon(isPlaying ? Icons.volume_up : Icons.audio_file)),
+                      title: Text(item.split('/').last), // 使用 split 切割路徑，只取最後面的檔名
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isPlaying)
+                            IconButton(
+                              iconSize: 36.0, // 放大播放圖示與點擊範圍
+                              icon: const Icon(Icons.play_arrow, color: Colors.green),
+                              onPressed: () => _startPlaying(item),
+                              tooltip: '開始',
+                            )
+                          else
+                            IconButton(
+                              iconSize: 36.0, // 放大停止圖示與點擊範圍
+                              icon: const Icon(Icons.stop, color: Colors.orange),
+                              onPressed: _stopPlaying,
+                              tooltip: '停止',
+                            ),
+                          const SizedBox(width: 8.0), // 在播放控制與刪除按鈕間增加安全間距，防止誤觸
+                          IconButton(
+                            iconSize: 36.0, // 放大刪除圖示與點擊範圍
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteItem(item),
+                            tooltip: '刪除',
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
